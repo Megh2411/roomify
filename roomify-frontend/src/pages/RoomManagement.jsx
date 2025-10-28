@@ -12,6 +12,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription, // Ensure this is imported if used
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -27,10 +28,11 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Trash2, Edit } from 'lucide-react'
-import { Card } from "@/components/ui/card" // ✅ Correct import
+import { Card } from "@/components/ui/card" // <-- 1. IMPORT CARD
 
-// ✅ 1. Define API base URL
+// --- 2. DEFINE API_BASE_URL ---
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+// -----------------------------
 
 const RoomManagement = () => {
   const [rooms, setRooms] = useState([])
@@ -52,6 +54,7 @@ const RoomManagement = () => {
       const token = localStorage.getItem('userToken')
       if (!token) throw new Error("No token found")
 
+      // --- 3. FIX URL SYNTAX (Use Backticks) ---
       const { data } = await axios.get(`${API_BASE_URL}/api/rooms`, {
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -79,6 +82,7 @@ const RoomManagement = () => {
       const token = localStorage.getItem('userToken')
       if (!token) throw new Error("No token found")
 
+      // --- 3. FIX URL SYNTAX (Use Backticks) ---
       const { data } = await axios.post(
         `${API_BASE_URL}/api/rooms`,
         { ...newRoomData, pricePerNight: Number(newRoomData.pricePerNight) },
@@ -107,6 +111,7 @@ const RoomManagement = () => {
       const token = localStorage.getItem('userToken')
       if (!token) throw new Error("No token found")
 
+      // URL Syntax was already correct here, just uses the defined variable now
       await axios.delete(`${API_BASE_URL}/api/rooms/${roomId}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -130,6 +135,10 @@ const RoomManagement = () => {
   if (loading)
     return <div className="p-8 text-center dark:text-gray-300">Loading rooms...</div>
 
+  // Display error only if dialog is not open
+  if (error && !isDialogOpen) return <div className="p-8 text-center text-red-600">{error}</div>;
+
+
   return (
     <div className="p-8">
       <div className="flex justify-between items-center mb-6">
@@ -138,12 +147,14 @@ const RoomManagement = () => {
         </h1>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            {/* ✅ Added `asChild` so Button acts as the trigger */}
+             {/* Re-added asChild based on previous context where removing it caused issues */}
             <Button onClick={() => setFormError(null)}>Create New Room</Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>Create New Room</DialogTitle>
+              {/* Added DialogDescription - ensure it's imported */}
+              <DialogDescription>Enter the details for the new room.</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleCreateRoom}>
               <div className="grid gap-4 py-4">
@@ -216,12 +227,15 @@ const RoomManagement = () => {
         </Dialog>
       </div>
 
-      {error && (
-        <div className="mb-4 p-4 text-center text-red-600 bg-red-100 dark:bg-red-900 dark:text-red-200 rounded">
-          {error}
-        </div>
-      )}
+      {/* Moved general error display here */}
+       {error && (
+         <div className="mb-4 p-4 text-center text-red-600 bg-red-100 dark:bg-red-900 dark:text-red-200 rounded">
+           {error}
+         </div>
+       )}
 
+
+      {/* --- ADDED DARK MODE CLASSES TO CARD & TABLE --- */}
       <Card className="bg-white rounded-lg border border-gray-200 dark:bg-gray-700 dark:border-gray-600">
         <Table>
           <TableHeader>
@@ -234,12 +248,13 @@ const RoomManagement = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
+            {/* Added safety check */}
             {!Array.isArray(rooms) || rooms.length === 0 ? (
               <TableRow className="dark:border-gray-600">
                 <TableCell colSpan={5} className="text-center dark:text-gray-400">
                   {loading
                     ? 'Loading...'
-                    : error
+                    : error // Show error only if loading is done and rooms array is empty/invalid
                     ? 'Error loading rooms.'
                     : 'No rooms found.'}
                 </TableCell>
@@ -252,17 +267,18 @@ const RoomManagement = () => {
                   </TableCell>
                   <TableCell className="dark:text-gray-300">{room.type}</TableCell>
                   <TableCell className="dark:text-gray-300">
-                    {room.status || '—'}
+                    {room.status || '—'} {/* Display dash if status is missing */}
                   </TableCell>
                   <TableCell className="dark:text-gray-300">
-                    ${room.pricePerNight?.toFixed(2)}
+                     {/* Add check for price before formatting */}
+                    ${typeof room.pricePerNight === 'number' ? room.pricePerNight.toFixed(2) : 'N/A'}
                   </TableCell>
                   <TableCell>
                     <Button
                       variant="ghost"
                       size="icon"
                       className="mr-2 dark:text-gray-400 dark:hover:bg-gray-600"
-                      disabled
+                      disabled // Edit functionality not implemented
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
@@ -281,6 +297,7 @@ const RoomManagement = () => {
           </TableBody>
         </Table>
       </Card>
+      {/* ------------------------------------------- */}
     </div>
   )
 }
