@@ -30,21 +30,13 @@ const allowedOrigins = [
     'https://roomify-blush.vercel.app' // <-- ADD YOUR VERCEL URL HERE
 ];
 
+// TEMPORARY DEBUGGING - Change this back later!
 const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    // or requests from allowed origins
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true // Important if you were using cookies/sessions, good practice anyway
+  origin: '*', // Allow ANY origin temporarily
+  credentials: true 
 };
 
-app.use(cors(corsOptions)); // Use the configured CORS options
-// ** END UPDATED CORS CONFIGURATION **
+app.use(cors(corsOptions));
 
 // Middleware to parse JSON request bodies
 app.use(express.json());
