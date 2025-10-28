@@ -1,0 +1,30 @@
+# Dependencies
+/node_modules
+
+# Environment variables
+.env
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS-specific
+.DS_Store
+# General ignores
+.DS_Store
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Node dependencies (ignore in BOTH frontend and backend)
+**/node_modules/
+
+# Environment variables (ignore in BOTH frontend and backend)
+**/.env
+
+# Vite build output (if you build the frontend)
+roomify-frontend/dist/
+
+# Add other specific files if needed
