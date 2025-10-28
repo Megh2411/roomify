@@ -26,13 +26,24 @@ const app = express();
 // ** UPDATED CORS CONFIGURATION **
 // Define allowed origins for CORS
 const allowedOrigins = [
-    'http://localhost:5173', // Your local frontend
-    'https://roomify-blush.vercel.app' // <-- ADD YOUR VERCEL URL HERE
+    'http://localhost:5173', 
+    'https://roomify-blush.vercel.app' 
 ];
 
-// TEMPORARY DEBUGGING - Change this back later!
 const corsOptions = {
-  origin: '*', // Allow ANY origin temporarily
+  origin: function (origin, callback) {
+    // --- ADD THIS LINE FOR DEBUGGING ---
+    console.log('Request Origin:', origin); 
+    // ------------------------------------
+
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      console.log('CORS Check Passed for Origin:', origin || 'N/A');
+      callback(null, true);
+    } else {
+      console.error('CORS Check FAILED for Origin:', origin); // Log failure
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true 
 };
 
