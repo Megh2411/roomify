@@ -5,49 +5,55 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import Footer from '../components/Footer'; // <-- IMPORTED FOOTER
+import Footer from '../components/Footer'
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 export default function RegisterPage() {
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState(null)
+  const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
 
   const submitHandler = async (e) => {
     e.preventDefault()
     setError(null)
 
+    if (!name.trim() || !email.trim() || !password.trim()) {
+      setError("All fields are required")
+      return
+    }
+    if (!email.includes("@")) {
+      setError("Please enter a valid email")
+      return
+    }
     if (password.length < 6) { 
       setError("Password must be at least 6 characters")
       return
     }
 
     try {
-      const { data } = await axios.post(
-        "http://localhost:5000/api/users",
-        {
-          name, 
-          email,
-          password,
-        }
-      )
-
+      setLoading(true)
+      const { data } = await axios.post(`${API_BASE_URL}/api/users`, {
+        name, email, password
+      })
+      if (!data?.token) throw new Error("Server did not return a token")
+      
       localStorage.setItem("userToken", data.token)
       localStorage.setItem("userInfo", JSON.stringify(data))
-
-      // Default redirect to the booking page for new guests
-      navigate("/book") 
-
+      navigate("/book")
     } catch (err) {
+      console.error("Registration error:", err)
       setError(err.response?.data?.message || "Registration failed. Please try again.")
+    } finally {
+      setLoading(false)
     }
   }
 
   return (
-    // 1. Added flex-col to push the footer down, applied dark mode classes
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-      {/* 2. Content wrapper: flex-grow ensures this section takes up all available space */}
       <div className="flex-grow flex items-center justify-center px-4">
         <div className="w-full max-w-md">
           <h1 className="text-4xl font-bold text-center mb-8 text-gray-900 dark:text-gray-100">Roomify</h1>
@@ -72,7 +78,9 @@ export default function RegisterPage() {
                 {error && <p className="text-red-500 text-sm">{error}</p>}
               </CardContent>
               <CardFooter>
-                <Button type="submit" className="w-full">Create Account</Button>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? "Creating..." : "Create Account"}
+                </Button>
               </CardFooter>
             </form>
             <CardContent className="flex justify-center">
@@ -84,7 +92,7 @@ export default function RegisterPage() {
           </Card>
         </div>
       </div>
-      <Footer /> {/* 3. FOOTER PLACEMENT */}
+      <Footer />
     </div>
   )
 }

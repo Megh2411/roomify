@@ -12,7 +12,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -28,6 +27,10 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Trash2, Edit } from 'lucide-react'
+import { Card } from "@/components/ui/card" // ✅ Correct import
+
+// ✅ 1. Define API base URL
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const RoomManagement = () => {
   const [rooms, setRooms] = useState([])
@@ -47,16 +50,25 @@ const RoomManagement = () => {
       setLoading(true)
       setError(null)
       const token = localStorage.getItem('userToken')
-      if (!token) throw new Error("No token found");
+      if (!token) throw new Error("No token found")
 
-      const { data } = await axios.get('http://localhost:5000/api/rooms', {
-        headers: { Authorization: `Bearer ${token}` }
+      const { data } = await axios.get(`${API_BASE_URL}/api/rooms`, {
+        headers: { Authorization: `Bearer ${token}` },
       })
-      setRooms(data)
+
+      if (Array.isArray(data)) {
+        setRooms(data)
+      } else {
+        console.error("API did not return an array for rooms:", data)
+        setRooms([])
+        setError('Received unexpected data format from server.')
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to fetch rooms.')
+      setRooms([])
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   // --- Create a new room ---
@@ -65,58 +77,70 @@ const RoomManagement = () => {
     setFormError(null)
     try {
       const token = localStorage.getItem('userToken')
-      if (!token) throw new Error("No token found");
+      if (!token) throw new Error("No token found")
 
       const { data } = await axios.post(
-        'http://localhost:5000/api/rooms',
-        {...newRoomData, pricePerNight: Number(newRoomData.pricePerNight)},
+        `${API_BASE_URL}/api/rooms`,
+        { ...newRoomData, pricePerNight: Number(newRoomData.pricePerNight) },
         { headers: { Authorization: `Bearer ${token}` } }
       )
-      setRooms([...rooms, data])
+
+      setRooms((prevRooms) =>
+        Array.isArray(prevRooms) ? [...prevRooms, data] : [data]
+      )
       setIsDialogOpen(false)
       setNewRoomData({ roomNumber: '', type: 'Single', pricePerNight: '' })
     } catch (err) {
-      setFormError(err.response?.data?.message || 'Failed to create room. Room number might already exist.')
+      setFormError(
+        err.response?.data?.message ||
+          'Failed to create room. Room number might already exist.'
+      )
     }
   }
 
   // --- Delete a room ---
   const handleDeleteRoom = async (roomId) => {
-    if (!window.confirm('Are you sure you want to delete this room?')) return;
+    if (!window.confirm('Are you sure you want to delete this room?')) return
 
     try {
       setError(null)
       const token = localStorage.getItem('userToken')
-      if (!token) throw new Error("No token found");
+      if (!token) throw new Error("No token found")
 
-      await axios.delete(
-        `http://localhost:5000/api/rooms/${roomId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+      await axios.delete(`${API_BASE_URL}/api/rooms/${roomId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      setRooms((prevRooms) =>
+        Array.isArray(prevRooms)
+          ? prevRooms.filter((room) => room._id !== roomId)
+          : []
       )
-      setRooms(rooms.filter((room) => room._id !== roomId))
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to delete room.')
     }
   }
 
-  // --- Load rooms on component mount ---
+  // --- Load rooms on mount ---
   useEffect(() => {
     fetchRooms()
   }, [])
 
-  if (loading) return <div className="p-8 text-center">Loading rooms...</div>
-  if (error && !isDialogOpen) return <div className="p-8 text-center text-red-600">{error}</div>
+  // --- UI rendering ---
+  if (loading)
+    return <div className="p-8 text-center dark:text-gray-300">Loading rooms...</div>
 
   return (
     <div className="p-8">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Room Management</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+          Room Management
+        </h1>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          {/* --- MODIFIED LINE: Removed asChild --- */}
-          <DialogTrigger>
+          <DialogTrigger asChild>
+            {/* ✅ Added `asChild` so Button acts as the trigger */}
             <Button onClick={() => setFormError(null)}>Create New Room</Button>
           </DialogTrigger>
-          {/* ------------------------------------- */}
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>Create New Room</DialogTitle>
@@ -124,22 +148,30 @@ const RoomManagement = () => {
             <form onSubmit={handleCreateRoom}>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="roomNumber" className="text-right">Room Number</Label>
+                  <Label htmlFor="roomNumber" className="text-right dark:text-gray-200">
+                    Room Number
+                  </Label>
                   <Input
                     id="roomNumber"
                     value={newRoomData.roomNumber}
-                    onChange={(e) => setNewRoomData({ ...newRoomData, roomNumber: e.target.value })}
-                    className="col-span-3"
+                    onChange={(e) =>
+                      setNewRoomData({ ...newRoomData, roomNumber: e.target.value })
+                    }
+                    className="col-span-3 dark:bg-gray-600 dark:border-gray-500 dark:text-white"
                     required
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="type" className="text-right">Type</Label>
+                  <Label htmlFor="type" className="text-right dark:text-gray-200">
+                    Type
+                  </Label>
                   <Select
                     value={newRoomData.type}
-                    onValueChange={(value) => setNewRoomData({ ...newRoomData, type: value })}
+                    onValueChange={(value) =>
+                      setNewRoomData({ ...newRoomData, type: value })
+                    }
                   >
-                    <SelectTrigger className="col-span-3">
+                    <SelectTrigger className="col-span-3 dark:bg-gray-600 dark:border-gray-500 dark:text-white">
                       <SelectValue placeholder="Select room type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -151,19 +183,30 @@ const RoomManagement = () => {
                   </Select>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="price" className="text-right">Price</Label>
+                  <Label htmlFor="price" className="text-right dark:text-gray-200">
+                    Price
+                  </Label>
                   <Input
                     id="price"
                     type="number"
                     min="0"
                     step="0.01"
                     value={newRoomData.pricePerNight}
-                    onChange={(e) => setNewRoomData({ ...newRoomData, pricePerNight: e.target.value })}
-                    className="col-span-3"
+                    onChange={(e) =>
+                      setNewRoomData({
+                        ...newRoomData,
+                        pricePerNight: e.target.value,
+                      })
+                    }
+                    className="col-span-3 dark:bg-gray-600 dark:border-gray-500 dark:text-white"
                     required
                   />
                 </div>
-                {formError && <p className="col-span-4 text-red-500 text-sm text-center">{formError}</p>}
+                {formError && (
+                  <p className="col-span-4 text-red-500 text-sm text-center">
+                    {formError}
+                  </p>
+                )}
               </div>
               <DialogFooter>
                 <Button type="submit">Create Room</Button>
@@ -173,37 +216,63 @@ const RoomManagement = () => {
         </Dialog>
       </div>
 
-      {error && <div className="mb-4 p-4 text-center text-red-600 bg-red-100 rounded">{error}</div>}
+      {error && (
+        <div className="mb-4 p-4 text-center text-red-600 bg-red-100 dark:bg-red-900 dark:text-red-200 rounded">
+          {error}
+        </div>
+      )}
 
-      <div className="bg-white rounded-lg border border-gray-200">
+      <Card className="bg-white rounded-lg border border-gray-200 dark:bg-gray-700 dark:border-gray-600">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Room Number</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Price</TableHead>
-              <TableHead>Actions</TableHead>
+            <TableRow className="dark:border-gray-600">
+              <TableHead className="dark:text-gray-300">Room Number</TableHead>
+              <TableHead className="dark:text-gray-300">Type</TableHead>
+              <TableHead className="dark:text-gray-300">Status</TableHead>
+              <TableHead className="dark:text-gray-300">Price</TableHead>
+              <TableHead className="dark:text-gray-300">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rooms.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center">No rooms found.</TableCell>
+            {!Array.isArray(rooms) || rooms.length === 0 ? (
+              <TableRow className="dark:border-gray-600">
+                <TableCell colSpan={5} className="text-center dark:text-gray-400">
+                  {loading
+                    ? 'Loading...'
+                    : error
+                    ? 'Error loading rooms.'
+                    : 'No rooms found.'}
+                </TableCell>
               </TableRow>
             ) : (
               rooms.map((room) => (
-                <TableRow key={room._id}>
-                  <TableCell className="font-medium">{room.roomNumber}</TableCell>
-                  <TableCell>{room.type}</TableCell>
-                  <TableCell>{room.status}</TableCell>
-                  <TableCell>${room.pricePerNight?.toFixed(2)}</TableCell>
+                <TableRow key={room._id} className="dark:border-gray-600">
+                  <TableCell className="font-medium dark:text-white">
+                    {room.roomNumber}
+                  </TableCell>
+                  <TableCell className="dark:text-gray-300">{room.type}</TableCell>
+                  <TableCell className="dark:text-gray-300">
+                    {room.status || '—'}
+                  </TableCell>
+                  <TableCell className="dark:text-gray-300">
+                    ${room.pricePerNight?.toFixed(2)}
+                  </TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="icon" className="mr-2" disabled>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="mr-2 dark:text-gray-400 dark:hover:bg-gray-600"
+                      disabled
+                    >
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDeleteRoom(room._id)}>
-                      <Trash2 className="h-4 w-4 text-red-600" />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDeleteRoom(room._id)}
+                      className="dark:text-red-400 dark:hover:bg-gray-600"
+                    >
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -211,7 +280,7 @@ const RoomManagement = () => {
             )}
           </TableBody>
         </Table>
-      </div>
+      </Card>
     </div>
   )
 }

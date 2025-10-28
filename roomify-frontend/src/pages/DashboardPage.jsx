@@ -1,12 +1,7 @@
-import { useState, useEffect } from "react"
-import axios from "axios"
-import { useNavigate } from 'react-router-dom'
-import {
-  DollarSign,
-  Book,
-  Bed,
-  CheckCircle,
-} from "lucide-react"
+import { useState, useEffect } from "react";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
+import { DollarSign, Book, Bed, CheckCircle } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -19,15 +14,19 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-} from "recharts"
+} from "recharts";
+
+// --- 1. DEFINE API_BASE_URL ---
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+// ------------------------------
 
 const DashboardPage = () => {
-  const [stats, setStats] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const navigate = useNavigate()
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
-  // --- Mock data ---
+  // --- Mock Data (for charts & recent activity) ---
   const revenueData = [
     { day: "Mon", revenue: 2400 },
     { day: "Tue", revenue: 1398 },
@@ -36,97 +35,95 @@ const DashboardPage = () => {
     { day: "Fri", revenue: 4800 },
     { day: "Sat", revenue: 3800 },
     { day: "Sun", revenue: 4300 },
-  ]
+  ];
 
   const activityData = [
     { id: 1, guestName: "Megh Doshi", action: "Checked In", room: "101", date: "Oct 27, 2025" },
     { id: 2, guestName: "Shrey Dedhia", action: "Booked", room: "204", date: "Oct 27, 2025" },
-  ]
-  // --- End of Mock Data ---
+  ];
 
+  // --- Fetch Dashboard Stats ---
   useEffect(() => {
     const fetchStats = async () => {
-      const token = localStorage.getItem("userToken")
+      const token = localStorage.getItem("userToken");
       if (!token) {
-        navigate('/login') // Redirect if no token
+        navigate("/login"); // Redirect if no token
         return;
       }
 
       try {
-        setLoading(true)
+        setLoading(true);
         const { data } = await axios.get(
-          // Corrected API URL
-          "http://localhost:5000/api/dashboard/stats", 
+          // ✅ FIXED: Correct string interpolation syntax
+          `${API_BASE_URL}/api/dashboard/stats`,
           { headers: { Authorization: `Bearer ${token}` } }
-        )
-        setStats(data)
+        );
+        setStats(data);
       } catch (err) {
-        setError(err.response?.data?.message || "Failed to fetch dashboard data.")
-        if(err.response?.status === 401 || err.response?.status === 403){
-          localStorage.removeItem('userToken')
-          localStorage.removeItem('userInfo')
-          navigate('/login')
+        setError(err.response?.data?.message || "Failed to fetch dashboard data.");
+        if (err.response?.status === 401 || err.response?.status === 403) {
+          localStorage.removeItem("userToken");
+          localStorage.removeItem("userInfo");
+          navigate("/login");
         }
+      } finally {
+        setLoading(false);
       }
-      setLoading(false)
-    }
+    };
 
-    fetchStats()
-  }, [navigate])
+    fetchStats();
+  }, [navigate]);
 
-
-  // --- Helper variables for dynamic data ---
-  // Ensure stats is defined before accessing properties
+  // --- KPI Data ---
   const kpiData = [
     {
       icon: DollarSign,
       title: "Total Revenue",
-      value: stats && stats.totalRevenue !== undefined ? `$${stats.totalRevenue.toFixed(2)}` : "$0.00", 
+      value: stats?.totalRevenue ? `$${stats.totalRevenue.toFixed(2)}` : "$0.00",
       color: "bg-blue-50",
       iconColor: "text-blue-600",
     },
     {
       icon: Book,
       title: "Total Bookings",
-      value: stats?.totalBookings !== undefined ? stats.totalBookings : "...",
+      value: stats?.totalBookings ?? "...",
       color: "bg-purple-50",
       iconColor: "text-purple-600",
     },
     {
       icon: Bed,
       title: "Current Occupancy",
-      value: stats && stats.currentOccupancy ? `${stats.currentOccupancy.rate}%` : "0.00%", 
+      value: stats?.currentOccupancy ? `${stats.currentOccupancy.rate}%` : "0.00%",
       color: "bg-orange-50",
       iconColor: "text-orange-600",
     },
     {
       icon: CheckCircle,
       title: "Rooms Available",
-      // --- FINAL FIX IS HERE ---
-      value: stats && stats.roomStatus 
-        ? stats.roomStatus.find((s) => s._id === "Available")?.count || 0 
-        : 0, 
+      value:
+        stats?.roomStatus?.find((s) => s._id === "Available")?.count ??
+        0,
       color: "bg-green-50",
       iconColor: "text-green-600",
     },
-  ]
+  ];
 
-  // Add checks for stats and stats.roomStatus before mapping
-  const roomStatusData = (stats && stats.roomStatus) ? stats.roomStatus.map(status => ({
-    name: status._id,
-    value: status.count,
-  })) : []
+  // --- Room Status Pie Chart Data ---
+  const roomStatusData = stats?.roomStatus
+    ? stats.roomStatus.map((status) => ({
+        name: status._id,
+        value: status.count,
+      }))
+    : [];
 
-  const COLORS = ["#10b981", "#f59e0b", "#ef4444"] // Available, Occupied, Maintenance
+  const COLORS = ["#10b981", "#f59e0b", "#ef4444"]; // Available, Occupied, Maintenance
 
   // --- Loading and Error Handling ---
-  if (loading) return <div className="p-8 text-center">Loading dashboard...</div>
-  if (error) return <div className="p-8 text-center text-red-600">{error}</div>
+  if (loading) return <div className="p-8 text-center">Loading dashboard...</div>;
+  if (error) return <div className="p-8 text-center text-red-600">{error}</div>;
+  if (!stats) return <div className="p-8 text-center">Waiting for data...</div>;
 
-  // --- Page Content ---
-  // Add an extra check here to ensure stats is fully loaded before rendering
-  if (!stats) return <div className="p-8 text-center">Waiting for data...</div>; 
-
+  // --- MAIN PAGE CONTENT ---
   return (
     <div className="p-8 space-y-8">
       <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
@@ -148,8 +145,9 @@ const DashboardPage = () => {
         ))}
       </div>
 
-      {/* Charts Grid */}
+      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Bar Chart */}
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <h2 className="text-lg font-bold text-gray-900 mb-4">Revenue (Last 7 Days)</h2>
           <ResponsiveContainer width="100%" height={300}>
@@ -157,13 +155,19 @@ const DashboardPage = () => {
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis dataKey="day" stroke="#6b7280" />
               <YAxis stroke="#6b7280" />
-              <Tooltip contentStyle={{ backgroundColor: "#fff", border: "1px solid #e5e7eb", borderRadius: "8px" }} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "#fff",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "8px",
+                }}
+              />
               <Bar dataKey="revenue" fill="#3b82f6" radius={[8, 8, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
-        
-        {/* Render Pie chart only if data exists */}
+
+        {/* Pie Chart */}
         {roomStatusData.length > 0 && (
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <h2 className="text-lg font-bold text-gray-900 mb-4">Room Status</h2>
@@ -182,7 +186,13 @@ const DashboardPage = () => {
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip contentStyle={{ backgroundColor: "#fff", border: "1px solid #e5e7eb", borderRadius: "8px" }} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "#fff",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: "8px",
+                  }}
+                />
                 <Legend />
               </PieChart>
             </ResponsiveContainer>
@@ -190,7 +200,7 @@ const DashboardPage = () => {
         )}
       </div>
 
-      {/* Recent Activity Table (Still Mock Data) */}
+      {/* Recent Activity */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         <h2 className="text-lg font-bold text-gray-900 mb-4">Recent Activity</h2>
         <div className="overflow-x-auto">
@@ -227,7 +237,7 @@ const DashboardPage = () => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default DashboardPage
+export default DashboardPage;

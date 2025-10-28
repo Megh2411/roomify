@@ -26,8 +26,12 @@ import {
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox" // Added for availability
+import { Checkbox } from "@/components/ui/checkbox"
 import { Trash2, Edit } from 'lucide-react'
+
+// --- 1. DEFINE API_BASE_URL ---
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+// ------------------------------
 
 const ServiceManagement = () => {
   const [services, setServices] = useState([])
@@ -36,7 +40,7 @@ const ServiceManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [formError, setFormError] = useState(null)
   const [newServiceData, setNewServiceData] = useState({
-    type: 'Food', // Default type
+    type: 'Food',
     description: '',
     price: '',
     isAvailable: true,
@@ -48,9 +52,10 @@ const ServiceManagement = () => {
       setLoading(true)
       setError(null)
       const token = localStorage.getItem('userToken')
-      if (!token) throw new Error("No token found");
+      if (!token) throw new Error("No token found")
 
-      const { data } = await axios.get('http://localhost:5000/api/services', {
+      // ✅ FIXED: Use backticks correctly
+      const { data } = await axios.get(`${API_BASE_URL}/api/services`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       setServices(data)
@@ -66,11 +71,12 @@ const ServiceManagement = () => {
     setFormError(null)
     try {
       const token = localStorage.getItem('userToken')
-      if (!token) throw new Error("No token found");
+      if (!token) throw new Error("No token found")
 
+      // ✅ FIXED: Correct URL interpolation
       const { data } = await axios.post(
-        'http://localhost:5000/api/services',
-        {...newServiceData, price: Number(newServiceData.price)}, // Ensure price is a number
+        `${API_BASE_URL}/api/services`,
+        { ...newServiceData, price: Number(newServiceData.price) },
         { headers: { Authorization: `Bearer ${token}` } }
       )
       setServices([...services, data])
@@ -83,15 +89,15 @@ const ServiceManagement = () => {
 
   // --- Delete a service ---
   const handleDeleteService = async (serviceId) => {
-    if (!window.confirm('Are you sure you want to delete this service?')) return;
-    
+    if (!window.confirm('Are you sure you want to delete this service?')) return
+
     try {
       setError(null)
       const token = localStorage.getItem('userToken')
-      if (!token) throw new Error("No token found");
-      
+      if (!token) throw new Error("No token found")
+
       await axios.delete(
-        `http://localhost:5000/api/services/${serviceId}`,
+        `${API_BASE_URL}/api/services/${serviceId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       )
       setServices(services.filter((service) => service._id !== serviceId))
@@ -114,7 +120,7 @@ const ServiceManagement = () => {
         <h1 className="text-3xl font-bold text-gray-900">Service Management</h1>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-             <Button onClick={() => setFormError(null)}>Create New Service</Button>
+            <Button onClick={() => setFormError(null)}>Create New Service</Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
@@ -139,7 +145,8 @@ const ServiceManagement = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                 <div className="grid grid-cols-4 items-center gap-4">
+
+                <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="description" className="text-right">Description</Label>
                   <Input
                     id="description"
@@ -149,6 +156,7 @@ const ServiceManagement = () => {
                     required
                   />
                 </div>
+
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="price" className="text-right">Price</Label>
                   <Input
@@ -162,15 +170,17 @@ const ServiceManagement = () => {
                     required
                   />
                 </div>
-                 <div className="grid grid-cols-4 items-center gap-4">
+
+                <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="available" className="text-right">Available</Label>
-                   <Checkbox
-                     id="available"
-                     checked={newServiceData.isAvailable}
-                     onCheckedChange={(checked) => setNewServiceData({ ...newServiceData, isAvailable: checked })}
-                     className="col-span-3 justify-self-start" // Align checkbox left
-                   />
+                  <Checkbox
+                    id="available"
+                    checked={newServiceData.isAvailable}
+                    onCheckedChange={(checked) => setNewServiceData({ ...newServiceData, isAvailable: checked })}
+                    className="col-span-3 justify-self-start"
+                  />
                 </div>
+
                 {formError && <p className="col-span-4 text-red-500 text-sm text-center">{formError}</p>}
               </div>
               <DialogFooter>

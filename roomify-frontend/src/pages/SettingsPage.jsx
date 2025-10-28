@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react'; // <-- Import useEffect
+import axios from 'axios'; // <-- Import axios
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,9 +9,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Server, Database, CheckCircle, Clock } from 'lucide-react';
 import { useTheme } from '../components/ThemeProvider'; 
 
+// --- 1. DEFINE API_BASE_URL --- (Now correctly used)
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+// -----------------------------
+
 const SettingsPage = () => {
-    // --- SIMPLIFIED THEME HOOK USAGE ---
-    const { theme, setTheme } = useTheme(); // No safety check needed now
+    // --- Theme Hook ---
+    const { theme, setTheme } = useTheme(); 
+    
+    // --- NEW: REAL STATUS STATES ---
+    const [apiStatus, setApiStatus] = useState('Checking...');
+    const [dbStatus, setDbStatus] = useState('Checking...');
     
     // Business Rule States (Mock for now)
     const [checkInTime, setCheckInTime] = useState('12:00 PM');
@@ -18,22 +27,50 @@ const SettingsPage = () => {
     const [cancellationFee, setCancellationFee] = useState('30');
     const [apiKey, setApiKey] = useState('********************');
 
+    // --- NEW: FUNCTION TO CHECK API STATUS ---
+    useEffect(() => {
+        const checkStatus = async () => {
+            try {
+                // Ping the root API endpoint (no auth needed)
+                const response = await axios.get(`${API_BASE_URL}/`, { timeout: 5000 });
+                
+                if (response.status === 200) {
+                    setApiStatus('Online');
+                } else {
+                    setApiStatus('Error');
+                }
+                
+                // Since the API connects to MongoDB on startup, success implies DB connection.
+                // If API is online, DB is likely connected.
+                setDbStatus('Connected'); 
+            } catch (error) {
+                setApiStatus('Offline');
+                setDbStatus('Disconnected');
+            }
+        };
+
+        checkStatus();
+    }, []); // Run only on mount
+
     const handleSave = (e) => {
         e.preventDefault();
         alert(`Settings Saved!\nCheck-in: ${checkInTime}\nFee: ${cancellationFee}%`);
     };
 
-    const SystemStatusCard = ({ title, status, icon: Icon, color }) => (
-        <Card className="flex items-center p-4 shadow-sm dark:bg-gray-700 dark:border-gray-600">
-            <Icon className={`h-8 w-8 mr-4 ${color}`} />
-            <div>
-                <CardTitle className="text-lg dark:text-white">{title}</CardTitle>
-                <CardDescription className={`font-semibold ${status === 'Connected' || status === 'Online' ? 'text-green-600' : 'text-red-600'}`}>
-                    Status: {status}
-                </CardDescription>
-            </div>
-        </Card>
-    );
+    const SystemStatusCard = ({ title, status, icon: Icon, color }) => {
+        const statusColor = status === 'Online' || status === 'Connected' ? 'text-green-600' : status === 'Checking...' ? 'text-yellow-600' : 'text-red-600';
+        return (
+            <Card className="flex items-center p-4 shadow-sm dark:bg-gray-700 dark:border-gray-600">
+                <Icon className={`h-8 w-8 mr-4 ${color}`} />
+                <div>
+                    <CardTitle className="text-lg dark:text-white">{title}</CardTitle>
+                    <CardDescription className={`font-semibold ${statusColor}`}>
+                        Status: {status}
+                    </CardDescription>
+                </div>
+            </Card>
+        );
+    };
     
     return (
         // Added dark mode classes for page background
@@ -82,10 +119,9 @@ const SettingsPage = () => {
                             <CardDescription>Manage theme preference and integration keys.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                             {/* --- DARK MODE TOGGLE (FUNCTIONAL) --- */}
+                            {/* --- DARK MODE TOGGLE (FUNCTIONAL) --- */}
                             <div className="flex items-center space-x-4 pt-4">
                                 <Label className="dark:text-gray-200">Theme</Label>
-                                {/* Removed disabled prop */}
                                 <Select value={theme} onValueChange={setTheme}> 
                                     <SelectTrigger className="w-[180px] dark:bg-gray-600 dark:border-gray-500 dark:text-white">
                                         <SelectValue placeholder="Select Theme" />
@@ -97,17 +133,17 @@ const SettingsPage = () => {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            {/* --- SYSTEM STATUS DISPLAY --- */}
+                            {/* --- SYSTEM STATUS DISPLAY (REAL-TIME CHECK) --- */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
                                 <SystemStatusCard 
                                     title="Backend API"
-                                    status="Online"
+                                    status={apiStatus}
                                     icon={Server}
                                     color="text-blue-600"
                                 />
                                 <SystemStatusCard 
                                     title="MongoDB"
-                                    status="Connected"
+                                    status={dbStatus}
                                     icon={Database}
                                     color="text-indigo-600"
                                 />
