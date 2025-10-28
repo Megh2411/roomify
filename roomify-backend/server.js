@@ -26,8 +26,8 @@ const app = express();
 // ** UPDATED CORS CONFIGURATION **
 // Define allowed origins for CORS
 const allowedOrigins = [
-    'http://localhost:5173', // Your local frontend dev server
-    // 'https://your-vercel-frontend-url.vercel.app' // Add your Vercel URL here AFTER deploying frontend
+    'http://localhost:5173', // Your local frontend
+    'https://roomify-blush.vercel.app' // <-- ADD YOUR VERCEL URL HERE
 ];
 
 const corsOptions = {
